@@ -16,7 +16,7 @@ struct Alumno{
     char carrera[15];
     int ciclo;
     float mensualidad;
-    int nextDel=0;
+    int nextDel=-2;
 
     void setData(){
         cout<<"Codigo: ";cin>>codigo;
@@ -33,8 +33,11 @@ struct Alumno{
         cout<<"Carrera: "<<carrera<<endl;
         cout<<"Ciclo: "<<ciclo<<endl;
         cout<<"Mensualidad: "<<mensualidad<<endl;
+        cout << "Next_Del: " << nextDel << endl<<endl;
     }
-    int get_nextDel(){return nextDel;}
+    void showData_line(){
+        cout << codigo << " " << nombre << " " << apellidos << " " << carrera << " " << ciclo << " " << mensualidad << endl;
+    }
 
 };
 
@@ -47,25 +50,16 @@ public:
 
     vector<Alumno> load(){
         vector<Alumno> alumnos;
-        Alumno record;
-
-        ifstream file(filename, ios::binary);//abrir archivo
+        ifstream file(filename, ios::binary);
         if(!file.is_open()) throw ("No se pudo abrir el archivo");
-
-        while(file.peek() != EOF){//realiza una revisión previa del siguiente registro
-            record = Alumno();
-            file.read(reinterpret_cast<char *>(&record), sizeof(Alumno));
-            alumnos.push_back(record);
+        file.seekg(sizeof(int), ios::beg);//me ubico en la posicion a leer
+        Alumno record;
+        while(file.read(reinterpret_cast<char *>(&record), sizeof(Alumno))){
+            if(record.nextDel == -2) alumnos.push_back(record);
         }
-
         file.close();
         return alumnos;
     }
-
-    void add(const Alumno &record) {
-
-    }
-
 
     Alumno readRecord(int pos)
     {
@@ -81,17 +75,39 @@ public:
     }
 
     bool deleteRecord(int pos){
+        bool eliminado = false;
         fstream file(this->filename, ios::binary | ios::in | ios::out);
         if(!file.is_open()) throw ("No se pudo abrir el archivo");
+
+        int metadata;
+        file.seekg(0, std::ios::beg); // Ubicar el puntero de lectura al inicio del archivo
+        file.read(reinterpret_cast<char*>(&metadata), sizeof(int));
+
         file.seekg(pos * sizeof(Alumno) + sizeof(int), ios::beg);//me ubico en la posicion a leer
         Alumno record;
+
         file.read(reinterpret_cast<char *>(&record), sizeof(Alumno));
-        if(record.get_nextDel() == -1) return false;
-        record.nextDel = -1;
-        file.seekp(pos * sizeof(Alumno) + sizeof(int), ios::beg);//me ubico en la posicion a leer
-        file.write(reinterpret_cast<const char *>(&record), sizeof(Alumno));
+        if(metadata == -1) {// se elimina el primero
+            record.nextDel = -1;
+            file.seekp(pos * sizeof(Alumno) + sizeof(int), ios::beg);//me ubico en la posicion a leer
+            file.write(reinterpret_cast<const char*>(&record), sizeof(Alumno));  // Escribe el nuevo registro al final del archivo
+            file.seekp(0, std::ios::beg); // Ubicar el puntero de lectura al inicio del archivo
+            file.write(reinterpret_cast<char*>(&pos), sizeof(int));
+            eliminado = true;
+        } else {
+            file.seekg(0, std::ios::beg); // Ubicar el puntero de lectura al inicio del archivo
+            file.read(reinterpret_cast<char*>(&metadata), sizeof(int));
+            file.seekg(pos * sizeof(Alumno) + sizeof(int), ios::beg);//me ubico en la posicion a leer
+            file.read(reinterpret_cast<char *>(&record), sizeof(Alumno));
+            record.nextDel = metadata;
+            file.seekp(pos * sizeof(Alumno) + sizeof(int), ios::beg);//me ubico en la posicion a escribir
+            file.write(reinterpret_cast<char *>(&record), sizeof(Alumno));
+            file.seekp(0, std::ios::beg); // Ubicar el puntero de lectura al inicio del archivo
+            file.write(reinterpret_cast<char*>(&pos), sizeof(int));
+            eliminado =  true;
+        }
         file.close();
-        return true;
+        return eliminado;
     }
 
     int size(){
@@ -103,7 +119,7 @@ public:
         return total_bytes / sizeof(Alumno);
     }
 
-    void add_prueba(const Alumno &record) {
+    void add(const Alumno &record) {
         fstream file(filename, std::ios::binary | std::ios::in | std::ios::out);  // Abre el archivo en modo lectura/escritura
         int metadata;
 
@@ -140,14 +156,16 @@ public:
         file.close();
     }
 
-//    void prueba_m1(){
-//        fstream file(filename, std::ios::binary | std::ios::app);  // Abre el archivo en modo adjunto
-//        int metadata = -1; // metadata = - 1
+
+//    void prueba_m1() {
+//        fstream file(filename, std::ios::binary | std::ios::in | std::ios::out);  // Abre el archivo en modo lectura/escritura
+//        int metadata = -15; // metadata = -1
 //        file.write(reinterpret_cast<const char*>(&metadata), sizeof(int));  // Escribe la metadata en el inicio
 //        file.close();
 //    }
-//    void lectura_m1(){
-//        fstream file(filename, std::ios::binary | std::ios::app);  // Abre el archivo en modo adjunto
+//
+//    void lectura_m1() {
+//        fstream file(filename, std::ios::binary | std::ios::in | std::ios::out);  // Abre el archivo en modo lectura/escritura
 //        int metadata;
 //        file.seekg(0, std::ios::beg); // Ubicar el puntero de lectura al inicio del archivo
 //        file.read(reinterpret_cast<char*>(&metadata), sizeof(int));
@@ -155,53 +173,92 @@ public:
 //        file.close();
 //    }
 
-    void prueba_m1() {
-        fstream file(filename, std::ios::binary | std::ios::in | std::ios::out);  // Abre el archivo en modo lectura/escritura
-        int metadata = -15; // metadata = -1
-        file.write(reinterpret_cast<const char*>(&metadata), sizeof(int));  // Escribe la metadata en el inicio
-        file.close();
-    }
-
-    void lectura_m1() {
-        fstream file(filename, std::ios::binary | std::ios::in | std::ios::out);  // Abre el archivo en modo lectura/escritura
-        int metadata;
-        file.seekg(0, std::ios::beg); // Ubicar el puntero de lectura al inicio del archivo
-        file.read(reinterpret_cast<char*>(&metadata), sizeof(int));
-        cout << metadata;
-        file.close();
-    }
-
+//    void show_all(){
+//        fstream file(filename, std::ios::binary | std::ios::in | std::ios::out);  // Abre el archivo en modo lectura/escritura
+//        int metadata;
+//        file.seekg(0, std::ios::beg); // Ubicar el puntero de lectura al inicio del archivo
+//        file.read(reinterpret_cast<char*>(&metadata), sizeof(int));
+//        cout << metadata << endl;
+//
+//        file.seekg(sizeof(int), std::ios::beg); // Ubicar el puntero de lectura al inicio del archivo
+//        Alumno alumno;
+//        while (file.read(reinterpret_cast<char*>(&alumno), sizeof(Alumno))) {
+//            cout << alumno.codigo << " " << alumno.nombre << " " << alumno.apellidos << " " << alumno.carrera << " " << alumno.ciclo << " "
+//            << alumno.mensualidad << " " << alumno.nextDel << endl;
+//        }
+//    }
+//
+//    void show_all_not_deleted(){
+//        fstream file(filename, std::ios::binary | std::ios::in | std::ios::out);  // Abre el archivo en modo lectura/escritura
+//        int metadata;
+//        file.seekg(0, std::ios::beg); // Ubicar el puntero de lectura al inicio del archivo
+//        file.read(reinterpret_cast<char*>(&metadata), sizeof(int));
+//
+//        file.seekg(sizeof(int), std::ios::beg); // Ubicar el puntero de lectura al inicio del archivo
+//        Alumno alumno;
+//        while (file.read(reinterpret_cast<char*>(&alumno), sizeof(Alumno))) {
+//            if(alumno.nextDel == -2) {
+//                cout << alumno.codigo << " " << alumno.nombre << " " << alumno.apellidos << " " << alumno.carrera << " "
+//                     << alumno.ciclo << " "
+//                     << alumno.mensualidad << " " << alumno.nextDel << endl;
+//            }
+//        }
+//    }
+//
+//    void show_all_david(){
+//        vector<Alumno> alumnos = load();
+//        for (auto & alumno : alumnos) {
+//            alumno.showData_line();
+//        }
+//    }
 
 };
 
 int main()
 {
 //Escritura
-    FixedRecordFile file1("data.bin");
-    Alumno Alumno1{"1234", "Edgar", "Chambilla", "CS", 5, 1250.0, 0};
-    Alumno Alumno2{"5678", "María", "López", "Arquitectura", 3, 1500.0, 0};
-    Alumno Alumno3{"9999", "Carlos", "Gómez", "Medicina", 2, 1800.0, 0};
-    Alumno Alumno4{"9999", "Luis", "Torres", "CS", 6, 1500.0, 0};
+    FixedRecordFile file1("data2.bin");
+    Alumno Alumno1{"1234", "Edgar", "Chambilla", "CS", 5, 1250.0 };
+    Alumno Alumno2{"5678", "María", "López", "Arquitectura", 3, 1500.0 };
+    Alumno Alumno3{"9999", "Carlos", "Gómez", "Medicina", 2, 1800.0 };
+    Alumno Alumno4{"9999", "Luis", "Torres", "CS", 6, 1500.0};
 
-    // file1.add_prueba(Alumno1);
-    // file1.add_prueba(Alumno2);
-    // file1.add_prueba(Alumno3);
-    // file1.add_prueba(Alumno4);
+//    file1.add(Alumno1);
+//    file1.add(Alumno2);
+//    file1.add(Alumno3);
+//    file1.add(Alumno4);
 
-    Alumno alumno = file1.readRecord(0);
-    alumno.showData();
-
-    alumno = file1.readRecord(1);
-    alumno.showData();
-
-    alumno = file1.readRecord(2);
-    alumno.showData();
+//    file1.deleteRecord(0);
+//    file1.deleteRecord(1);
+//    file1.deleteRecord(2);
+//    file1.deleteRecord(3);
 
 
-    alumno = file1.readRecord(3);
-    alumno.showData();
+//    Alumno alumno = file1.readRecord(0);
+//    alumno.showData();
 
+//    alumno = file1.readRecord(1);
+//    alumno.showData();
 
+//    alumno = file1.readRecord(2);
+//    alumno.showData();
+//
+//
+//    alumno = file1.readRecord(3);
+//    alumno.showData();
+
+//    file1.show_all();
+//    cout << endl;
+//    file1.show_all_not_deleted();
+//
+//    cout << endl;
+//
+//    file1.show_all_david();
+
+    vector<Alumno> alumnos = file1.load();
+    for (auto & alumno : alumnos) {
+        alumno.showData_line();
+    };
 
     return 0;
 }
