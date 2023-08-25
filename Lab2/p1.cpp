@@ -14,7 +14,6 @@ struct Record{
     long left = -1, right = -1;
 
     void showData_line(){
-        // Print the data with padding to the right
         cout << cod << " " << nombre << " " << ciclo << " " << left << " " << right << endl;
     }
 };
@@ -78,43 +77,31 @@ private:
 
         file.seekg(pos_node*sizeof(Record)); // Ubicar el puntero de lectura al inicio del archivo
         file.read(reinterpret_cast<char*>(&current_record), sizeof(Record));//obtengo el record de la primera posicion y lo guardo en actual_recor
-//        current_record.showData_line();
-        if(key==current_record.cod)
-        {
-            file.seekg(pos_node*sizeof(Record)); // Movemos el cursor a la posicion de donde vamos a leer
-            file.read(reinterpret_cast<char*>(&return_record),sizeof(Record)); // Leemos el record a retornar
-//            return_record.showData_line();
+        if(current_record.cod == key){
+            return_record = current_record;
             file.close();
             return return_record;
         }
-
-        if(key < current_record.cod){
-            file.close();
-            if(current_record.left!=-1){
-                find(current_record.left-1,key);
+        else if(current_record.cod > key){
+            if(current_record.left != -1){
+                return_record = find(current_record.left-1, key);
+            }
+            else{
+                file.close();
+                throw std::out_of_range("No existe el registro con la clave indicada.");
             }
         }
-        else if(key > current_record.right){
-            file.close();
-            if(current_record.right!=-1){
-                find(current_record.right-1,key);
+        else if(current_record.cod < key){
+            if(current_record.right != -1){
+                return_record = find(current_record.right-1, key);
+            }
+            else{
+                file.close();
+                throw std::out_of_range("No existe el registro con la clave indicada.");
             }
         }
-
-
+        file.close();
         return return_record;
-        /*
-        if (node == nullptr)
-            return false;
-        else if (value < node->data)
-            return find(node->left, value);
-        else if (value > node->data)
-            return find(node->right, value);
-        else
-            return true;
-        */
-
-//        if(pos_node );
     }
 
     void insert(long pos_node, Record record){
@@ -196,34 +183,22 @@ private:
         if(!file){
             throw std::out_of_range("No existe el archivo, no se puede cargar info.");
         }
-
         Record current_record;
-        file.seekg(pos_node * sizeof(Record));
-        file.read(reinterpret_cast<char*>(&current_record), sizeof(Record));
-        // Recorrido in-order recursivo
-        if(current_record.left!=-1){
-            vector<Record> left_subtree = inorder(current_record.left-1);
-            result.insert(result.end(), left_subtree.begin(), left_subtree.end());
+        file.seekg(pos_node*sizeof(Record)); // Ubicar el puntero de lectura al inicio del archivo
+        file.read(reinterpret_cast<char*>(&current_record), sizeof(Record));//obtengo el record de la primera posicion y lo guardo en actual_recor
+        if(current_record.left != -1){
+            vector<Record> left_result = inorder(current_record.left-1);
+            result.insert(result.end(), left_result.begin(), left_result.end());
         }
-
         result.push_back(current_record);
-//        current_record.showData_line();
-
-        if(current_record.right!=-1){
-            vector<Record> right_subtree = inorder(current_record.right-1);
-            result.insert(result.end(), right_subtree.begin(), right_subtree.end());
+        if(current_record.right != -1){
+            vector<Record> right_result = inorder(current_record.right-1);
+            result.insert(result.end(), right_result.begin(), right_result.end());
         }
-
+        file.close();
 
 
         return result;
-        /*
-        if (node == nullptr)
-            return;
-        displayPreOrder(node->left);
-        cout << node->data << endl;
-        displayPreOrder(node->right);
-        */
     }
 
 
@@ -241,12 +216,12 @@ int main() {
     Record record4 = {224, "Andrea", 2};
     Record record5 = {887, "Benjamin", 9};
 
-    avlFile.insert(record1);
-    avlFile.insert(record2);
-    avlFile.insert(record3);
-    avlFile.insert(record4);
-    avlFile.insert(record5);
-//    avlFile.print_file();
+     avlFile.insert(record1);
+     avlFile.insert(record2);
+     avlFile.insert(record3);
+     avlFile.insert(record4);
+     avlFile.insert(record5);
+     avlFile.print_file();
 
 //    // Realizar recorrido inorder
     vector<Record> inorder_result = avlFile.inorder();
@@ -256,11 +231,11 @@ int main() {
     }
 
 //     Buscar un registro
-     int key_to_find = 224;
-     Record found_record = avlFile.find(key_to_find);
-     cout << "Registro encontrado con clave " << key_to_find << ": " << endl;
-     cout << "Cod: " << found_record.cod << ", Nombre: " << found_record.nombre << ", Ciclo: " << found_record.ciclo << endl;
-//     cout << avlFile.get_pos_root() << endl;
+    int key_to_find = 271;
+    Record found_record = avlFile.find(key_to_find);
+    cout << "Registro encontrado con clave " << key_to_find << ": " << endl;
+    cout << "Cod: " << found_record.cod << ", Nombre: " << found_record.nombre << ", Ciclo: " << found_record.ciclo << endl;
+//    cout << avlFile.get_pos_root() << endl;
     return 0;
 }
 
