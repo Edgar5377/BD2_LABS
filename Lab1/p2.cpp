@@ -4,6 +4,7 @@
 #include <fstream>
 #include <iostream>
 #include <vector>
+#include <cstring>
 
 using namespace std;
 
@@ -13,8 +14,54 @@ struct Alumno{
     string Carrera;
     float mensualidad;
 
-    size_t size(){
-        return Nombre.size() + Apellidos.size() + Carrera.size() + sizeof(mensualidad);
+    size_t string_with_delimiter_size(const string& str){
+        return sizeof(size_t)+str.size();
+    }
+
+    size_t size_of(){
+        return string_with_delimiter_size(Nombre) +
+                string_with_delimiter_size(Apellidos) +
+                string_with_delimiter_size(Carrera) +
+                sizeof(mensualidad);
+    }
+    void concat(char*& buffer, const char* str) {
+        size_t len = strlen(str);
+        memcpy(buffer, &len, sizeof(len));//Concatenamos el tamaño del string al buffer, el tercer parámetro es el tamaño del dato que estamos copiando.
+        buffer += sizeof(len);//Nos movemos en el buffer, para que el siguiente dato que concatenemos no se sobreescriba con el anterior.
+        memcpy(buffer, str, len);//Concatenamos el string al buffer, el tercer parámetro es el tamaño del dato que estamos copiando.
+        buffer += len;//Nos movemos en el buffer, para que el siguiente dato que concatenemos no se sobreescriba con el anterior.
+    }
+
+    void concat(char*& buffer, const float& value) {
+        memcpy(buffer, &value, sizeof(value));
+        buffer+=sizeof(value);
+    }
+    char* empaquetar(){
+        char* buffer = new char[size_of()];
+        concat(buffer, Nombre.c_str());
+        concat(buffer, Apellidos.c_str());
+        concat(buffer, Carrera.c_str());
+        concat(buffer, mensualidad);
+        return buffer;
+    }
+    void desempaquetar(char* buffer, int n){
+        size_t tam = 0;
+        memcpy(&tam, buffer, sizeof(size_t));//Copiamos la información del buffer a tam, el tercer parámetro es el tamaño del dato que estamos copiando.
+        buffer += sizeof(size_t);//Nos movemos en el buffer, para identificar el siguiente dato que queremos copiar.
+        Nombre.assign(buffer, tam);//Copiamos la información del buffer a Nombre, el tercer parámetro es el tamaño del dato que estamos copiando.
+        buffer += tam;//Nos movemos en el buffer, para identificar el siguiente dato que queremos copiar.
+
+        memcpy(&tam, buffer, sizeof(size_t));//Obtenemos el tamaño del siguiente string.
+        buffer += sizeof(size_t);//Nos movemos en el buffer, para identificar el siguiente dato que queremos copiar.
+        Apellidos.assign(buffer, tam);//Copiamos la información del buffer a Apellidos, el tercer parámetro es el tamaño del dato que estamos copiando.
+        buffer+=tam;
+
+        memcpy(&tam, buffer,sizeof(size_t));//Obtenemos el tamaño del siguiente string.
+        buffer += sizeof(size_t);//Nos movemos en el buffer
+        Carrera.assign(buffer, tam);//Copiamos la información del buffer a Carrera
+        buffer+=tam;
+
+        memcpy(&mensualidad, buffer, sizeof(mensualidad));
     }
 };
 
@@ -72,6 +119,10 @@ public:
         Alumno record;
         file.read((char*)&record, tam_reg);//Leemos el registro que queremos leer.
         file.close();//Cerramos el archivo
+        //¿Cuántos bytes le corresponde a cada campo?¿Cómo lo sabe el programa?
+        //Debemos usar separadores, que nos indique, más que nada, los pesos de cada string, porque de int/float/double ya sabemos.
+
+
 
         return record;
     }
@@ -85,7 +136,7 @@ int main(){
     a1.Apellidos = "Gonzalez";
     a1.Carrera = "Ing. Sistemas";
     a1.mensualidad = 1000.0;
-    cout<<a1.size()<<endl;
+    cout<<a1.size_of()<<endl;
 
 
     return 0;
