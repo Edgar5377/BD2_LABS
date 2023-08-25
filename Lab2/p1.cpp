@@ -3,12 +3,264 @@
 //
 
 #include <fstream>
-
+#include <vector>
+#include <iostream>
 using namespace std;
 
-int main(){
+struct Record{
+    int cod;
+    char nombre[12];
+    int ciclo;
+    long left = -1, right = -1;
+
+    void showData_line(){
+        // Print the data with padding to the right
+        cout << cod << " " << nombre << " " << ciclo << " " << left << " " << right << endl;
+    }
+};
+
+
+class AVLFile{
+private:
+    string filename;
+    long pos_root;
+public:
+    AVLFile(string filename){
+        this->pos_root = -1;
+        this->filename = filename;
+    }
+
+    Record find(int key){
+        fstream file(filename, std::ios::binary | std::ios::in | std::ios::out);  // Abre el archivo en modo lectura/escritura
+        if(file){
+            pos_root=0;
+        }
+        file.close();
+        return find(pos_root, key);
+    }
+
+    void insert(Record record){
+        fstream file(filename, std::ios::binary | std::ios::in | std::ios::out);  // Abre el archivo en modo lectura/escritura
+        if(file){
+            pos_root=0;
+        }
+        file.close();
+        insert(pos_root, record);
+    }
+
+    vector<Record> inorder(){
+        fstream file(filename, std::ios::binary | std::ios::in | std::ios::out);  // Abre el archivo en modo lectura/escritura
+        if(file){
+            pos_root=0;
+        }
+        file.close();
+        return inorder(pos_root);
+    }
+
+    long get_pos_root(){return pos_root;}
+
+    void print_file(){
+        fstream file(filename, std::ios::binary | std::ios::in | std::ios::out);
+        Record current_record;
+        file.seekg(0);
+        while(file.read(reinterpret_cast<char*>(&current_record), sizeof(Record))){
+            current_record.showData_line();
+        }
+        file.close();
+    }
+
+private:
+    Record find(long pos_node, int key){
+        fstream file(filename, std::ios::binary | std::ios::in | std::ios::out);  // Abre el archivo en modo lectura/escritura
+        Record current_record;
+        Record return_record;
+
+
+        file.seekg(pos_node*sizeof(Record)); // Ubicar el puntero de lectura al inicio del archivo
+        file.read(reinterpret_cast<char*>(&current_record), sizeof(Record));//obtengo el record de la primera posicion y lo guardo en actual_recor
+//        current_record.showData_line();
+        if(key==current_record.cod)
+        {
+            file.seekg(pos_node*sizeof(Record)); // Movemos el cursor a la posicion de donde vamos a leer
+            file.read(reinterpret_cast<char*>(&return_record),sizeof(Record)); // Leemos el record a retornar
+//            return_record.showData_line();
+            file.close();
+            return return_record;
+        }
+
+        if(key < current_record.cod){
+            file.close();
+            if(current_record.left!=-1){
+                find(current_record.left-1,key);
+            }
+        }
+        else if(key > current_record.right){
+            file.close();
+            if(current_record.right!=-1){
+                find(current_record.right-1,key);
+            }
+        }
+
+
+        return return_record;
+        /*
+        if (node == nullptr)
+            return false;
+        else if (value < node->data)
+            return find(node->left, value);
+        else if (value > node->data)
+            return find(node->right, value);
+        else
+            return true;
+        */
+
+//        if(pos_node );
+    }
+
+    void insert(long pos_node, Record record){
+
+        fstream file(filename, std::ios::binary | std::ios::in | std::ios::out);  // Abre el archivo en modo lectura/escritura
+        Record current_record;
+
+        if(!file){
+            file.close();
+            std::ofstream outfile(filename, std::ios::binary | std::ios::app);  // Abre el archivo en modo adjunto
+//            current_record = record;
+            outfile.write(reinterpret_cast<const char*>(&record), sizeof(Record));  // Escribe la metadata en el inicio
+            outfile.close();
+//            cout << pos_node << endl;
+            return;
+        }
+//        cout << pos_node << endl;
+
+        file.seekg(pos_node* sizeof(Record)); // Ubicar el puntero de lectura al inicio del archivo, es decir la raiz
+        file.read(reinterpret_cast<char*>(&current_record), sizeof(Record));//obtengo el record de la posicion
+
+
+        Record insert_record;
+        insert_record =  record;
+
+
+        //comparar los valores de codigo;
+        if(insert_record.cod > current_record.cod){
+            if(current_record.right == -1 ){
+
+                file.seekp(0, std::ios::end); // Moverse al final del archivo
+                file.write(reinterpret_cast<const char*>(&record), sizeof(Record));  // Escribe el nuevo registro al final del archivo
+                long position_nuevo = file.tellp()/sizeof(Record);  // calculo del valor del valor a insertar
+                file.seekp(pos_node* sizeof(Record)); // Moverse a la posicion a actualizar
+                current_record.right = position_nuevo; // Actualizamos el valor de right
+                file.write(reinterpret_cast<const char*>(&current_record), sizeof(Record));  // Actualizamos el valor de nuestro Record
+                file.close();
+            }else{
+                file.close();
+                if(current_record.right != -1 )
+                {
+                    insert(current_record.right-1, insert_record);
+                }
+            }
+
+        }
+        else if(insert_record.cod < current_record.cod) {
+            if (current_record.left == -1) {
+                file.seekp(0, std::ios::end); // Moverse al final del archivo
+                file.write(reinterpret_cast<const char*>(&record), sizeof(Record));  // Escribe el nuevo registro al final del archivo
+                long position_nuevo = file.tellp()/sizeof(Record);  // calculo del valor del valor a insertar
+                file.seekp(pos_node* sizeof(Record)); // Moverse a la posicion a actualizar
+                current_record.left = position_nuevo; // Actualizamos el valor de left
+                file.write(reinterpret_cast<const char*>(&current_record), sizeof(Record));  // Actualizamos el valor de nuestro Record
+                file.close();
+            } else {
+                file.close();
+                if (current_record.left != -1)
+                {
+                    insert(current_record.left-1, record);
+                }
+            }
+        }
+
+        file.close();
+        /*
+        if (node == nullptr)
+            node = new NodeBT<T>(value);
+        else if (value < node->data)
+            insert(node->left, value);
+        else
+            insert(node->right, value);
+        */
+    }
+
+    vector<Record> inorder(long pos_node){
+        fstream file(filename, std::ios::binary | std::ios::in | std::ios::out);
+        vector<Record> result;
+        if(!file){
+            throw std::out_of_range("No existe el archivo, no se puede cargar info.");
+        }
+
+        Record current_record;
+        file.seekg(pos_node * sizeof(Record));
+        file.read(reinterpret_cast<char*>(&current_record), sizeof(Record));
+        // Recorrido in-order recursivo
+        if(current_record.left!=-1){
+            vector<Record> left_subtree = inorder(current_record.left-1);
+            result.insert(result.end(), left_subtree.begin(), left_subtree.end());
+        }
+
+        result.push_back(current_record);
+//        current_record.showData_line();
+
+        if(current_record.right!=-1){
+            vector<Record> right_subtree = inorder(current_record.right-1);
+            result.insert(result.end(), right_subtree.begin(), right_subtree.end());
+        }
 
 
 
+        return result;
+        /*
+        if (node == nullptr)
+            return;
+        displayPreOrder(node->left);
+        cout << node->data << endl;
+        displayPreOrder(node->right);
+        */
+    }
+
+
+
+};
+
+
+int main() {
+    AVLFile avlFile("data.dat");
+
+    // Insertar registros
+    Record record1 = {271, "Josimar", 5};
+    Record record2 = {255, "Manuel", 8};
+    Record record3 = {362, "Cinthya", 3};
+    Record record4 = {224, "Andrea", 2};
+    Record record5 = {887, "Benjamin", 9};
+
+    avlFile.insert(record1);
+    avlFile.insert(record2);
+    avlFile.insert(record3);
+    avlFile.insert(record4);
+    avlFile.insert(record5);
+//    avlFile.print_file();
+
+//    // Realizar recorrido inorder
+    vector<Record> inorder_result = avlFile.inorder();
+    cout << "Recorrido In-Order:" << endl;
+    for (const Record& record : inorder_result) {
+        cout << "Cod: " << record.cod << ", Nombre: " << record.nombre << ", Ciclo: " << record.ciclo << endl;
+    }
+
+//     Buscar un registro
+     int key_to_find = 224;
+     Record found_record = avlFile.find(key_to_find);
+     cout << "Registro encontrado con clave " << key_to_find << ": " << endl;
+     cout << "Cod: " << found_record.cod << ", Nombre: " << found_record.nombre << ", Ciclo: " << found_record.ciclo << endl;
+//     cout << avlFile.get_pos_root() << endl;
     return 0;
 }
+
