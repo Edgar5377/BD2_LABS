@@ -22,8 +22,9 @@ struct Matricula{
         return string_with_delimiter_size(Codigo) +
                sizeof(Ciclo) +
                sizeof(Mensualidad) +
-               sizeof(Observaciones);
+               string_with_delimiter_size(Observaciones);
     }
+
     void concat(char*& buffer, const char* str) {
         size_t len = strlen(str);
         memcpy(buffer, &len, sizeof(len));//Concatenamos el tamaño del string al buffer, el tercer parámetro es el tamaño del dato que estamos copiando.
@@ -36,6 +37,7 @@ struct Matricula{
         memcpy(buffer, &value, sizeof(value));
         buffer+=sizeof(value);
     }
+
     void concat(char*& buffer, const int& value) {
         memcpy(buffer, &value, sizeof(value));
         buffer+=sizeof(value);
@@ -78,32 +80,23 @@ public:
         this->filename = filename;
     }
 
-    void write(Matricula alumno){
-//        ofstream file(filename, ios::binary | ios::app);
-//        file.write(alumno.Nombre.c_str(), alumno.Nombre.size());
-//        file.write(alumno.Apellidos.c_str(), alumno.Apellidos.size());
-//        file.write(alumno.Carrera.c_str(), alumno.Carrera.size());
-//        file.write((char*)&alumno.mensualidad, sizeof(alumno.mensualidad));
-//        file.close();
+    void write(Matricula matricula) {
+        ofstream file(filename, ios::binary | ios::app);//abro el archivo en app para que el puntero se posicione al final del archivo
+        long pos_fisica = file.tellp();//obtengo la posición física del archivo
+        file.write(matricula.empaquetar(), matricula.size_of());//escribimos el alumno en el archivo
+        file.close();//cerramos el archivo
+
+        ofstream fm("cabacera.bin",
+                    ios::binary);//abro el archivo, que será nuestra metadata, en donde almacenaré la posición y el tamaño de cada registro.
+        fm.write((char*)pos_fisica, sizeof(long));//escribimos la posición física del registro que acabamos de escribir.
+        fm.write((char*)matricula.size_of(), sizeof(int));//escribimos el tamaño del registro que acabamos de escribir.
+        fm.close();//cerramos el archivo
     }
 
     vector<Matricula> read(){
-//        vector<Alumno> alumnos;
-//        ifstream file(filename, ios::binary);
-//        while(!file.eof()){
-//            Alumno alumno;
-//            char buffer[100];
-//            file.read(buffer, 100);
-//            alumno.Nombre = buffer;
-//            file.read(buffer, 100);
-//            alumno.Apellidos = buffer;
-//            file.read(buffer, 100);
-//            alumno.Carrera = buffer;
-//            file.read((char*)&alumno.mensualidad, sizeof(alumno.mensualidad));
-//            alumnos.push_back(alumno);
-//        }
-//        file.close();
-//        return alumnos;
+        vector<Matricula> alumnos;
+
+        return alumnos;
     }
 
     Matricula readRecord(int pos){
@@ -120,14 +113,14 @@ public:
         //Procedemos a trabajar con el archivo de registros
         ifstream file(filename, ios::binary);//abro el archivo
         file.seekg(pos_fisica);//Nos movemos a la posición del registro que queremos leer.
+        //Ubicado el cursor en el registro pos:
+        char* buffer = new char[tam_reg];//Creamos un buffer del tamaño del registro que vamos a leer.
+        file.read(buffer, tam_reg);//Leemos el registro que queremos leer.
+        file.close();//Cerramos el archivo
 
         Matricula record;
-        file.read((char*)&record, tam_reg);//Leemos el registro que queremos leer.
+        record.desempaquetar(buffer, tam_reg);//Desempaquetamos el buffer, asignamos los valores al record.
         file.close();//Cerramos el archivo
-        //¿Cuántos bytes le corresponde a cada campo?¿Cómo lo sabe el programa?
-        //Debemos usar separadores, que nos indique, más que nada, los pesos de cada string, porque de int/float/double ya sabemos.
-
-
 
         return record;
     }
@@ -135,13 +128,13 @@ public:
 };
 
 int main(){
-    VariableRecordFile file1("data_variable.bin");
+    VariableRecordFile file1("data.bin");
     Matricula a1;
-//    a1.Nombre = "David";
-//    a1.Apellidos = "Gonzalez";
-//    a1.Carrera = "Ing. Sistemas";
-//    a1.mensualidad = 1000.0;
-//    cout<<a1.size_of()<<endl;
+    a1.Ciclo=1;
+    a1.Mensualidad=100;
+    a1.Codigo="201910111";
+    a1.Observaciones="Ninguna";
+    file1.write(a1);
 
 
     return 0;
