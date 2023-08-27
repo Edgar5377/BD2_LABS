@@ -101,23 +101,34 @@ public:
         file.close();//cerramos el archivo
 
         //LLENANDO METADATA:
-        ofstream fm("cabacera.bin",ios::app | ios::binary );//abro el archivo, que será nuestra metadata, en donde almacenaré la posición y el tamaño de cada registro.
+        ofstream fm("cabecera.bin",ios::app | ios::binary );//abro el archivo, que será nuestra metadata, en donde almacenaré la posición y el tamaño de cada registro.
         size_t tam_Reg = matricula.size_of();//obtenemos el tamaño del registro que acabamos de escribir.
-        cout<<pos_fisica<<" "<<tam_Reg<<endl;
+//        cout<<pos_fisica<<" "<<tam_Reg<<endl;
         fm.write(reinterpret_cast<char*>(&pos_fisica), sizeof(long));//escribimos la posición física del registro que acabamos de escribir.
         fm.write(reinterpret_cast<char*>(&tam_Reg), sizeof(int));//escribimos el tamaño del registro que acabamos de escribir.
         fm.close();//cerramos el archivo
     }
 
-//    vector<Matricula> read(){
-//        vector<Matricula> alumnos;
-//
-//        return alumnos;
-//    }
+    vector<Matricula> load(){
+        vector<Matricula> alumnos;
+        ifstream fm("cabecera.bin", ios::binary);
+
+        //Calcular la cantidad de registros con el archivo de cabecera;
+        fm.seekg(0,ios::end);//Nos movemos al final del archivo
+        int cant_reg = fm.tellg()/(sizeof(int)*2);//Calculamos la cantidad de registros
+
+        for(int i=0;i<cant_reg;i++){
+            Matricula alumno = readRecord(i);
+            alumnos.push_back(alumno);
+        }
+
+        fm.close();
+        return alumnos;
+    }
 
     Matricula readRecord(int pos){
         //Leyendo metadata
-        ifstream fm("cabacera.bin", ios::binary);//abro el archivo, que será nuestra metadata, en donde almacenaré la posición y el tamaño de cada registro.
+        ifstream fm("cabecera.bin", ios::binary);//abro el archivo, que será nuestra metadata, en donde almacenaré la posición y el tamaño de cada registro.
         if(!fm.is_open()) throw ("No se pudo abrir el archivo");
         fm.seekg(pos*sizeof(int)*2);//Cada registro tiene 2 enteros, pos y tamaño. Nos movemos a la posición del registro que queremos leer. NOLINT(*-narrowing-conversions)
 
@@ -126,14 +137,14 @@ public:
         int tam_reg;
         fm.read(reinterpret_cast<char*>(&pos_fisica), sizeof(long));//Leemos la posición física del registro que queremos leer.
         fm.read(reinterpret_cast<char*>(&tam_reg), sizeof(int));//Leemos el tamaño del registro que queremos leer.
-        cout<<pos_fisica<<" "<<tam_reg<<endl;
+//        cout<<pos_fisica<<" "<<tam_reg<<endl;
         fm.close();//Es todo lo que quería de la metadata
 
         //Procedemos a trabajar con el archivo de registros
         ifstream file(filename, ios::binary);//abro el archivo
         if(!file.is_open()) throw ("No se pudo abrir el archivo");
         file.seekg(pos_fisica);//Nos movemos a la posición del registro que queremos leer.
-        cout<<file.tellg()<<endl;
+//        cout<<file.tellg()<<endl;
         //Ubicado el cursor en el registro pos:
         char* buffer = new char[tam_reg];//Creamos un buffer del tamaño del registro que vamos a leer.
         file.read(buffer, tam_reg); //Leemos el registro que queremos leer en el buffer de tamaño tam_reg.
@@ -151,30 +162,38 @@ int main(){
     VariableRecordFile file1("data.bin");
 
     Matricula Matricula1{"201910111",1,100,"Ninguna"};
-    Matricula Matricula2{"201910112",2,200,"Ninguna"};
-    Matricula Matricula3{"20191011",3,300,"Ninguna"};
-    Matricula Matricula4{"201910114",4,400,"Ninguna"};
-    Matricula Matricula5{"201910115",5,500,"Ninguna"};
+    Matricula Matricula2{"201910112",2,200,"Hubo descuento"};
+    Matricula Matricula3{"20191011",3,300,"Pagado una parte"};
+    Matricula Matricula4{"201910114",4,400,"Pagado"};
+    Matricula Matricula5{"201910115",5,500,"Falta pago"};
 
 //    file1.add(Matricula1);
 //    file1.add(Matricula2);
 //    file1.add(Matricula3);
 //    file1.add(Matricula4);
 //    file1.add(Matricula5);
-//    Matricula matri = file1.readRecord(2);
-//    matri.showData();
+//
+//    Matricula matricula = file1.readRecord(2);
+//    matricula.showData();
+//    cout<<endl;
+
+    vector<Matricula> v_matricula = file1.load();
+    for(auto & i : v_matricula) {
+        i.showData();
+        cout<<endl;
+    }
 
 
-    Matricula Copia_datos;
-    char* buffer = Matricula3.empaquetar();
-
-    Copia_datos.desempaquetar(buffer, Matricula3.size_of());
-
-    // Mostrar los datos desempaquetados
-    std::cout << "Codigo: " << Copia_datos.Codigo << std::endl;
-    std::cout << "Ciclo: " << Copia_datos.Ciclo << std::endl;
-    std::cout << "Mensualidad: " << Copia_datos.Mensualidad << std::endl;
-    std::cout << "Observaciones: " << Copia_datos.Observaciones << std::endl;
+//    Matricula Copia_datos;
+//    char* buffer = Matricula3.empaquetar();
+//
+//    Copia_datos.desempaquetar(buffer, Matricula3.size_of());
+//
+//    // Mostrar los datos desempaquetados
+//    std::cout << "Codigo: " << Copia_datos.Codigo << std::endl;
+//    std::cout << "Ciclo: " << Copia_datos.Ciclo << std::endl;
+//    std::cout << "Mensualidad: " << Copia_datos.Mensualidad << std::endl;
+//    std::cout << "Observaciones: " << Copia_datos.Observaciones << std::endl;
 
 
 //    delete[] buffer; // Liberar la memoria del buffer
