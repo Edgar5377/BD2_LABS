@@ -183,7 +183,7 @@ int main(){
         cout<<endl;
     }
 
-
+// NO HACER CASO A ESTO, codigos de prueba unitarias
 //    Matricula Copia_datos;
 //    char* buffer = Matricula3.empaquetar();
 //
