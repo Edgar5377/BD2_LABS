@@ -152,7 +152,7 @@ public:
 
         Matricula record;
         record.desempaquetar(buffer, tam_reg);//Desempaquetamos el buffer, asignamos los valores al record.
-        delete[] buffer;//Liberamos la memoria del buffer
+
         return record;
     }
 
@@ -167,11 +167,11 @@ int main(){
     Matricula Matricula4{"201910114",4,400,"Pagado"};
     Matricula Matricula5{"201910115",5,500,"Falta pago"};
 
-//    file1.add(Matricula1);
-//    file1.add(Matricula2);
-//    file1.add(Matricula3);
-//    file1.add(Matricula4);
-//    file1.add(Matricula5);
+    file1.add(Matricula1);
+    file1.add(Matricula2);
+    file1.add(Matricula3);
+    file1.add(Matricula4);
+    file1.add(Matricula5);
 //
 //    Matricula matricula = file1.readRecord(2);
 //    matricula.showData();
