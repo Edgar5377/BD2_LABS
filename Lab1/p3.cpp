@@ -24,58 +24,56 @@ struct Matricula{
 
     static void concat(char*& buffer, const char* str) {
         size_t len = strlen(str);
-        memcpy(buffer, &len, sizeof(len));//Concatenamos el tamaño del string al buffer, el tercer parámetro es el tamaño del dato que estamos copiando.
-        buffer += sizeof(len);//Nos movemos en el buffer, para que el siguiente dato que concatenemos no se sobreescriba con el anterior.
-        memcpy(buffer, str, len);//Concatenamos el string al buffer, el tercer parámetro es el tamaño del dato que estamos copiando.
-        buffer += len;//Nos movemos en el buffer, para que el siguiente dato que concatenemos no se sobreescriba con el anterior.
+        memcpy(buffer, &len, sizeof(len));
+        buffer += sizeof(len);
+        memcpy(buffer, str, len);
+        buffer += len;
     }
 
     static void concat(char*& buffer, const float& value) {
         memcpy(buffer, &value, sizeof(value));
-        buffer+=sizeof(value);
+        buffer += sizeof(value);
     }
 
     static void concat(char*& buffer, const int& value) {
         memcpy(buffer, &value, sizeof(value));
-        buffer+=sizeof(value);
+        buffer += sizeof(value);
     }
 
-    char* empaquetar(){
-        char* buffer = new char[size_of()];
-        concat(buffer, Codigo.c_str());
-        concat(buffer, Ciclo);
-        concat(buffer, Mensualidad);
-        concat(buffer, Observaciones.c_str());
+    char* empaquetar() {
+        size_t bufferSize = size_of();
+        char* buffer = new char[bufferSize];
+        char* current = buffer;
+
+        concat(current, Codigo.c_str());
+        concat(current, Ciclo);
+        concat(current, Mensualidad);
+        concat(current, Observaciones.c_str());
+
         return buffer;
     }
-    void desempaquetar(char* buffer) {
-        size_t strLen;
 
-        // Extraer Codigo
-        memcpy(&strLen, buffer, sizeof(size_t));
-        buffer += sizeof(size_t);
-        char* codigoBuffer = new char[strLen];
-        memcpy(codigoBuffer, buffer, strLen);
-        buffer += strLen;
-        Codigo = string(codigoBuffer, strLen);
-        delete[] codigoBuffer;
+    void desempaquetar(const char* buffer, int n) {
+        const char* current = buffer;
 
-        // Extraer Ciclo
-        memcpy(&Ciclo, buffer, sizeof(int));
-        buffer += sizeof(int);
+        size_t codigoLength;
+        memcpy(&codigoLength, current, sizeof(codigoLength));
+        current += sizeof(codigoLength);
 
-        // Extraer Mensualidad
-        memcpy(&Mensualidad, buffer, sizeof(float));
-        buffer += sizeof(float);
+        Codigo.assign(current, codigoLength);
+        current += codigoLength;
 
-        // Extraer Observaciones
-        memcpy(&strLen, buffer, sizeof(size_t));
-        buffer += sizeof(size_t);
-        char* observacionesBuffer = new char[strLen];
-        memcpy(observacionesBuffer, buffer, strLen);
-        buffer += strLen;
-        Observaciones = string(observacionesBuffer, strLen);
-        delete[] observacionesBuffer;
+        memcpy(&Ciclo, current, sizeof(Ciclo));
+        current += sizeof(Ciclo);
+
+        memcpy(&Mensualidad, current, sizeof(Mensualidad));
+        current += sizeof(Mensualidad);
+
+        size_t observacionesLength;
+        memcpy(&observacionesLength, current, sizeof(observacionesLength));
+        current += sizeof(observacionesLength);
+
+        Observaciones.assign(current, observacionesLength);
     }
 
     void showData(){
@@ -95,6 +93,7 @@ public:
 
     void add(Matricula matricula) {
         ofstream file(filename, ios::app | ios::binary );//abro el archivo en app para que el puntero se posicione al final del archivo
+        if(!file.is_open()) throw ("No se pudo abrir el archivo");
         file.seekp(0,ios::end);
         long pos_fisica = file.tellp();//obtengo la posición física del archivo
 
@@ -119,6 +118,7 @@ public:
     Matricula readRecord(int pos){
         //Leyendo metadata
         ifstream fm("cabacera.bin", ios::binary);//abro el archivo, que será nuestra metadata, en donde almacenaré la posición y el tamaño de cada registro.
+        if(!fm.is_open()) throw ("No se pudo abrir el archivo");
         fm.seekg(pos*sizeof(int)*2);//Cada registro tiene 2 enteros, pos y tamaño. Nos movemos a la posición del registro que queremos leer. NOLINT(*-narrowing-conversions)
 
         //Obtenemos las características del record[pos]
@@ -131,17 +131,17 @@ public:
 
         //Procedemos a trabajar con el archivo de registros
         ifstream file(filename, ios::binary);//abro el archivo
+        if(!file.is_open()) throw ("No se pudo abrir el archivo");
         file.seekg(pos_fisica);//Nos movemos a la posición del registro que queremos leer.
-
+        cout<<file.tellg()<<endl;
         //Ubicado el cursor en el registro pos:
         char* buffer = new char[tam_reg];//Creamos un buffer del tamaño del registro que vamos a leer.
-        file.read(buffer, tam_reg);//Leemos el registro que queremos leer.
+        file.read(buffer, tam_reg); //Leemos el registro que queremos leer en el buffer de tamaño tam_reg.
         file.close();//Cerramos el archivo
 
         Matricula record;
-        record.desempaquetar(buffer);//Desempaquetamos el buffer, asignamos los valores al record.
-        delete[] buffer;
-
+        record.desempaquetar(buffer, tam_reg);//Desempaquetamos el buffer, asignamos los valores al record.
+        delete[] buffer;//Liberamos la memoria del buffer
         return record;
     }
 
@@ -161,9 +161,24 @@ int main(){
 //    file1.add(Matricula3);
 //    file1.add(Matricula4);
 //    file1.add(Matricula5);
+//    Matricula matri = file1.readRecord(2);
+//    matri.showData();
 
-    Matricula record = file1.readRecord(2);
-//    record.showData();
+
+    Matricula Copia_datos;
+    char* buffer = Matricula3.empaquetar();
+
+    Copia_datos.desempaquetar(buffer, Matricula3.size_of());
+
+    // Mostrar los datos desempaquetados
+    std::cout << "Codigo: " << Copia_datos.Codigo << std::endl;
+    std::cout << "Ciclo: " << Copia_datos.Ciclo << std::endl;
+    std::cout << "Mensualidad: " << Copia_datos.Mensualidad << std::endl;
+    std::cout << "Observaciones: " << Copia_datos.Observaciones << std::endl;
+
+
+//    delete[] buffer; // Liberar la memoria del buffer
+
 //    ifstream file("cabecera.bin", ios::binary);
 //    char c;
 //    while (file.get(c)) {
