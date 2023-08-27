@@ -97,7 +97,9 @@ public:
         file.seekp(0,ios::end);
         long pos_fisica = file.tellp();//obtengo la posición física del archivo
 
-        file.write(matricula.empaquetar(), matricula.size_of());//escribimos el alumno en el archivo
+        auto buffer_temp = matricula.empaquetar();
+        file.write(buffer_temp, matricula.size_of());//escribimos el alumno en el archivo
+        delete [] buffer_temp;//liberamos la memoria del buffer
         file.close();//cerramos el archivo
 
         //LLENANDO METADATA:
@@ -152,7 +154,7 @@ public:
 
         Matricula record;
         record.desempaquetar(buffer, tam_reg);//Desempaquetamos el buffer, asignamos los valores al record.
-
+        delete [] buffer;//Liberamos la memoria del buffer
         return record;
     }
 
