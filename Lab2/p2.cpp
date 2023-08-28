@@ -2,6 +2,9 @@
 #include<fstream>
 #include<cstdio>
 #include <map>
+#include <string>
+#include <cstring>
+//#include <c
 using namespace std;
 
 struct Record
@@ -34,6 +37,11 @@ struct Record
     }
 };
 
+struct RandomIndex{
+    char key[12];
+    int address;
+};
+
 class RandomFile {
 public:
     string fileName;
@@ -44,12 +52,12 @@ public:
 public:
     RandomFile(string _fileName) {
         this->fileName = _fileName;
-        this->indexName = _fileName + "_ind";
+        this->indexName = "indexfile.bin";
         readIndex();
     }
 
     ~RandomFile(){
-        //writeIndex();
+        writeIndex();
     }
 
     /*
@@ -59,35 +67,50 @@ public:
         ifstream file(indexName, ios::binary | ios::in );  // Abre el archivo en modo lectura/escritura
         file.seekg(0,ios::beg); // ubica al inicio del archivo
 
-        char key_value[12] = "";
-        int value_value = 0 ;
-
-
-        while(!file.eof()){
-            file.read(reinterpret_cast<char *>(&key_value), sizeof(char[12]));
-            file.read(reinterpret_cast<char *>(&value_value), sizeof(int));
-            cout << key_value << " " << value_value << endl;
+//        string key_value = "";
+//        int value_value = 0 ;
+        RandomIndex index_read;
+//        while(!file.eof()){
+//            file.read(reinterpret_cast<char *>(&key_value), sizeof(string));
+//            file.read(reinterpret_cast<char *>(&value_value), sizeof(int));
+//            cout << key_value << " " << value_value << endl;
+        while (file.read(reinterpret_cast<char *>(&index_read), sizeof(RandomIndex))){
+            index.insert(std::make_pair((string)(index_read.key), index_read.address));
         }
-//        while (file.read(reinterpret_cast<char *>(&key_value), sizeof(char[12])) &&
-//               file.read(reinterpret_cast<char *>(&value_value), sizeof(int))) {
-//            cout<<key_value<<endl;
-//            index.insert(std::make_pair(key_value, value_value));
 //        }
 
 //        while(file.read(reinterpret_cast<char *>(&key[12],&value), sizeof(char[12])+sizeof(int))){
 //            index.insert(std::make_pair(key,value));
 //        }
+        file.close();
     }
 
     /*
     * Regresa el indice al disco
     */
     void writeIndex(){
-        ofstream file(indexName, ios::binary);
-        for (auto it = index.begin(); it != index.end(); ++it) {
-            file.write(reinterpret_cast<const char *>(&it->first), sizeof(it->first));
-            file.write(reinterpret_cast<const char *>(&it->second), sizeof(it->second));
+
+//        for (const auto& par : index) {
+//            std::cout << "Clave: " << par.first << ", Valor: " << par.second << std::endl;
+//        }
+
+        RandomIndex index_write;
+        ofstream file(indexName, ios::binary | ios::app);
+//        const char* cString = nullptr;
+//        for (const auto& par : index) {
+//            std::cout << "Clave: " << par.first << ", Valor: " << par.second << std::endl;
+//            file.write(reinterpret_cast<const char *>(&par.first), sizeof(string));
+//            file.write(reinterpret_cast<const char *>(&par.second), sizeof(int));
+//        }
+
+        for (auto it = index.begin(); it != index.end(); ++it){
+            strcpy(index_write.key, it->first.c_str());
+            index_write.address = it->second;
+//            cout << index_write.key << endl;
+            file.write(reinterpret_cast<const char *>(&index_write), sizeof(RandomIndex));
         }
+
+        file.close();
     }
 
     /*
@@ -98,17 +121,19 @@ public:
 
         if(!file){
             file.close();
-            std::ofstream outfile(fileName, std::ios::binary | std::ios::app);  // Abre el archivo en modo adjunto
-            outfile.write(reinterpret_cast<const char*>(&record), sizeof(Record));  // Escribe la metadata en el inicio
+            std::ofstream outfile(fileName, std::ios::binary | std::ios::app);
             int position = outfile.tellp();
-            cout <<"position : " <<position << endl;
-            cout <<"nombre : " <<record.nombre << endl;
+            outfile.write(reinterpret_cast<const char*>(&record), sizeof(Record));
+//            cout <<"position : " <<position << endl;
+//            cout <<"nombre : " <<record.nombre << endl;
             index.insert(std::make_pair(record.nombre, position));
             outfile.close();
         } else{
             file.seekp(0, std::ios::end); // ubica al final del archivo
-            file.write(reinterpret_cast<char*>(&record), sizeof(Record));
             int position = file.tellp();
+            file.write(reinterpret_cast<char*>(&record), sizeof(Record));
+//            cout <<"position : " <<position << endl;
+//            cout <<"nombre : " <<record.nombre << endl;
             index.insert(std::make_pair(record.nombre, position));
         }
         file.close();
@@ -119,36 +144,43 @@ public:
     * Busca un registro que coincida con la key
     */
     Record* search(string key) {
-        Record* result = nullptr;
+        Record* result_ptr = nullptr;
+        Record result{};
 
         auto encontrado = index.find(key);
-        long position = encontrado->second;
 
         if (encontrado == index.end()) {
             std::cout << "Key no encontrada." << std::endl;
-            throw ("Key no encontrada.");
+            return result_ptr; // Return nullptr if key is not found
         }
+
+        int position = encontrado->second;
 
         ifstream file(fileName, ios::binary | ios::in);  // Abre el archivo en modo lectura
         file.seekg(position, std::ios::beg);
-        file.read(reinterpret_cast<char*>(&result), sizeof(Record));// Lee la metadata y la almacena en el objeto.
+        file.read(reinterpret_cast<char*>(&result), sizeof(Record));
+//        cout <<"Si lo leyo " <<result.nombre  << endl;
+        result_ptr = new Record(result);
         file.close();
 
-        return result;
-    }
-
-    /*
-   * Muestra todos los registros de acuerdo como fueron insertados en el archivo de datos
-   */
-    void scanAll() {
+        return result_ptr;
 
     }
 
-    /*
-   * Muestra todos los registros de acuerdo a como estan ordenados en el indice
-   */
-    void scanAllByIndex() {
 
+
+    void print_data_index(){
+        ifstream indexFile(indexName, ios::binary | ios::in);  // Abre el archivo en modo lectura
+        RandomIndex index;
+        indexFile.seekg(0, std::ios::beg); // Ubicar el puntero de lectura al inicio del archivo
+//        std::cout << "YOU CALL ME! "<< endl;
+//        std::cout << indexName<< endl;
+
+        while (indexFile.read(reinterpret_cast<char *>(&index), sizeof(RandomIndex))) {
+//            cout << "aaaa";
+            std::cout << "Clave: " << index.key << ", Valor: " << index.address << std::endl;
+        }
+        indexFile.close();
     }
 
 };
@@ -162,13 +194,7 @@ void writeFile(string filename){
     }
 }
 
-void readFile(string filename){
-    RandomFile file(filename);
-    cout<<"--------- show all data -----------\n";
-    file.scanAll();
-    cout<<"--------- show all sorted data -----------\n";
-    file.scanAllByIndex();
-}
+
 
 int main(){
 
@@ -177,13 +203,18 @@ int main(){
     RandomFile file1("data4.bin");
 
     Record Alumno1{"Edgar", "CS", 5 };
-    Record alumno2{"María", "Math", 20};
-    Record alumno3{"Carlos", "Physics", 24};
-//
-    file1.write_record(Alumno1);
-    file1.write_record(alumno2);
-    file1.write_record(alumno3);
+    Record alumno2{"Maria", "IngIndustrial", 20};
+    Record alumno3{"Carlos", "Matematica", 24};
+////
 
+//    file1.write_record(Alumno1);
+//    file1.write_record(alumno2);
+//    file1.write_record(alumno3);
+//
+    Record* puntero = file1.search("Edgar");
+    cout << "Nombre del puntero: "<< puntero->nombre << endl;
+
+//    file1.print_data_index();
 //    file1.readIndex();
 //    readFile("index.dat");
     return 0;
