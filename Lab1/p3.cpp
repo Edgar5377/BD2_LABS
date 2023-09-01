@@ -169,7 +169,7 @@ int main(){
     Matricula Matricula4{"201910114",4,400,"Pagado"};
     Matricula Matricula5{"201910115",5,500,"Falta pago"};
 
-//    file1.add(Matricula1);
+    file1.add(Matricula1);
 //    file1.add(Matricula2);
 //    file1.add(Matricula3);
 //    file1.add(Matricula4);
